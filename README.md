@@ -13,6 +13,7 @@ curl -L https://raw.githubusercontent.com/hugojosefson/doskeep/main/doskeep | ba
 ```
 
 The script:
+
 1. Installs EmuDeck + RetroArch + DOSBox Pure + Steam ROM Manager
 2. Checks for game files — offers to browse/download from eXoDOS on archive.org
 3. Launches Steam ROM Manager to add games to your Steam library
@@ -23,10 +24,10 @@ Re-run it after each manual step to continue where you left off.
 
 ## Files
 
-| File | Purpose |
-| :--- | :------ |
-| [doskeep](doskeep) | main CLI tool |
-| [exodos-browser.sh](exodos-browser.sh) | standalone game browser (used by doskeep) |
-| [exodos-emudeck.md](exodos-emudeck.md) | step-by-step manual guide |
+| File                                   | Purpose                                 |
+| :------------------------------------- | :-------------------------------------- |
+| [doskeep](doskeep)                     | main CLI tool                           |
+| `doskeep --browse`                     | browse and download games interactively |
+| [exodos-emudeck.md](exodos-emudeck.md) | step-by-step manual guide               |
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development and testing.

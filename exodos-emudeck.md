@@ -3,15 +3,15 @@
 > **Warning:** This guide is untested. It may not work or may cause issues. Use
 > at your own risk.
 
-> **Automated alternative:** Run [doskeep](doskeep) from the terminal
-> for a guided setup that automates much of the process:
+> **Automated alternative:** Run [doskeep](doskeep) from the terminal for a
+> guided setup that automates much of the process:
 >
 > ```bash
 > curl -L https://raw.githubusercontent.com/hugojosefson/doskeep/main/doskeep | bash
 > ```
 >
 > To browse and download individual game zips later, use
-> [exodos-browser.sh](exodos-browser.sh).
+> [doskeep --browse](../../doskeep).
 
 Play 7,600+ DOS games from Gaming Mode with full controller support.
 
