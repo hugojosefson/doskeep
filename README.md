@@ -10,16 +10,20 @@ Custom guides and configs for the Steam Deck.
 - [eXoDOS + EmuDeck: play 7,600+ DOS games from Gaming Mode](exodos-emudeck.md)
 - [setup-dos.sh](setup-dos.sh) — automated setup script (companion to the guide
   above)
-- [Dockerfile.test](Dockerfile.test) + [test-setup.sh](test-setup.sh) —
-  containerized test harness for `setup-dos.sh`
-- [run-tests.sh](run-tests.sh) — one-command test runner
+- [Makefile](Makefile) — `make all` renders HTML and runs tests
+- [test/](test/) — containerized test harness for `setup-dos.sh`
+  - [Dockerfile](test/Dockerfile) — SteamOS-based test image
+  - [setup.sh](test/setup.sh) — test suite (5 phase tests)
+  - [run.sh](test/run.sh) — one-command test runner
 
 ## Testing
 
 ```bash
-./run-tests.sh
+make all    # render HTML + run tests
+make test   # tests only
+make html   # render HTML only (via pattern rule %.html: %.md)
 ```
 
-Builds a SteamOS Docker container, runs `setup-dos.sh` through all phases with
-mocked preconditions, and verifies each phase produces the expected output and
-state transitions.
+The test suite builds a SteamOS Docker container, runs `setup-dos.sh` through
+all phases with mocked preconditions, and verifies each phase produces the
+expected output and state transitions.
