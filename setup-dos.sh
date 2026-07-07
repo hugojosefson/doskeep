@@ -108,10 +108,9 @@ phase_4() {
     echo ">>> Returning to Gaming Mode..."
     for cmd in \
         "steamos-session-select gamescope" \
-        "loginctl terminate-user $USER"; do
+        "loginctl terminate-user ${USER:-deck}"; do
         if command -v "${cmd%% *}" &>/dev/null; then
-            $cmd
-            exit 0
+            $cmd && exit 0
         fi
     done
     echo "Failed to switch. Reboot or select Gaming Mode manually."
