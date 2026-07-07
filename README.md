@@ -1,5 +1,8 @@
 # Steam Deck stuff
 
+> **Warning:** Everything in this repo is untested. It may not work or may cause
+> issues. Use at your own risk.
+
 Custom guides and configs for the Steam Deck.
 
 ## Contents

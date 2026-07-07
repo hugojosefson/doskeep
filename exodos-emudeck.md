@@ -1,5 +1,8 @@
 # eXoDOS + EmuDeck on Steam Deck
 
+> **Warning:** This guide is untested. It may not work or may cause issues. Use
+> at your own risk.
+
 Play 7,600+ DOS games from Gaming Mode with full controller support.
 
 ## How it works
