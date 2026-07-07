@@ -24,19 +24,4 @@ after each manual step to continue where you left off.
 - [setup-dos.sh](setup-dos.sh) — automated setup script (companion to the guide
   above)
 
-### Development
-
-- [Makefile](Makefile) — `make all` renders HTML and runs tests
-- [test/](test/) — containerized test harness for `setup-dos.sh`
-
-## Testing
-
-```bash
-make all    # render HTML + run tests
-make test   # tests only
-make html   # render HTML only (via pattern rule %.html: %.md)
-```
-
-The test suite builds a SteamOS Docker container, runs `setup-dos.sh` through
-all phases with mocked preconditions, and verifies each phase produces the
-expected output and state transitions.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development and testing info.
