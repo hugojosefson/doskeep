@@ -1,14 +1,25 @@
 #!/bin/bash
 set -euo pipefail
 
-# ─── Config ───
-ROM_DIR="$HOME/Emulation/roms/dos"
-STATE_DIR="$HOME/.config/dosdeck-setup"
-STATE_FILE="$STATE_DIR/phase"
-
-mkdir -p "$STATE_DIR"
-
 save_phase() { echo "$1" > "$STATE_FILE"; }
+
+main() {
+    ROM_DIR="$HOME/Emulation/roms/dos"
+    STATE_DIR="$HOME/.config/dosdeck-setup"
+    STATE_FILE="$STATE_DIR/phase"
+
+    mkdir -p "$STATE_DIR"
+
+    PHASE=$(cat "$STATE_FILE" 2>/dev/null || echo "0")
+
+    case "$PHASE" in
+        0) phase_0 ;&
+        1) phase_1 ;&
+        2) phase_2 ;&
+        3) phase_3 ;&
+        4) phase_4 ;&
+    esac
+}
 
 phase_0() {
     [ -d "$HOME/Emulation" ] && return 0
@@ -117,13 +128,4 @@ phase_4() {
     exit 1
 }
 
-# ─── Main ───
-PHASE=$(cat "$STATE_FILE" 2>/dev/null || echo "0")
-
-case "$PHASE" in
-    0) phase_0 ;&
-    1) phase_1 ;&
-    2) phase_2 ;&
-    3) phase_3 ;&
-    4) phase_4 ;&
-esac
+main "$@"
