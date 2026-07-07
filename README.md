@@ -5,16 +5,29 @@
 
 Custom guides and configs for the Steam Deck.
 
+## Quick start
+
+Copy/paste this into the Desktop Mode terminal:
+
+```bash
+curl -L https://raw.githubusercontent.com/hugojosefson/steamdeck/main/setup-dos.sh | bash
+```
+
+The script walks you through installing EmuDeck + RetroArch + DOS Box Pure +
+Steam ROM Manager, placing game files, and returning to Gaming Mode. Re-run it
+after each manual step to continue where you left off.
+
 ## Contents
 
 - [eXoDOS + EmuDeck: play 7,600+ DOS games from Gaming Mode](exodos-emudeck.md)
+  — detailed step-by-step guide
 - [setup-dos.sh](setup-dos.sh) — automated setup script (companion to the guide
   above)
+
+### Development
+
 - [Makefile](Makefile) — `make all` renders HTML and runs tests
 - [test/](test/) — containerized test harness for `setup-dos.sh`
-  - [Dockerfile](test/Dockerfile) — SteamOS-based test image
-  - [setup.sh](test/setup.sh) — test suite (5 phase tests)
-  - [run.sh](test/run.sh) — one-command test runner
 
 ## Testing
 

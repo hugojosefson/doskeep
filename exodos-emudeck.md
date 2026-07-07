@@ -3,6 +3,13 @@
 > **Warning:** This guide is untested. It may not work or may cause issues. Use
 > at your own risk.
 
+> **Automated alternative:** Run [setup-dos.sh](setup-dos.sh) from the terminal
+> for a guided setup that automates much of the process:
+>
+> ```bash
+> curl -L https://raw.githubusercontent.com/hugojosefson/steamdeck/main/setup-dos.sh | bash
+> ```
+
 Play 7,600+ DOS games from Gaming Mode with full controller support.
 
 ## How it works
