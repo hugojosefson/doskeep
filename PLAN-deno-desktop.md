@@ -51,9 +51,17 @@ main.ts
 5. After downloads, "Add to Steam" button creates the shortcut
 6. User closes app, games appear in Steam
 
+### Decisions so far
+
+| Question | Decision |
+| :------- | :------- |
+| Bash coexistence? | Replace entirely. Deno Desktop becomes the only doskeep. |
+| Steam shortcut vdf? | `npm:steam-binary-vdf` — works with Deno, no Python needed. Read + write round-trip verified. |
+| Auto-update? | `Deno.autoUpdate()` with release manifest (same pattern as hello-world POC). |
+| First feature? | Both precondition status + game browser together in initial version. |
+
 ### Unknowns / questions
 
-- Steam shortcut: use Deno spawn + pip vdf, or find/port a JS vdf library?
 - AppImage path: `~/Emulation/tools/doskeep` or `~/.local/bin/`?
 - User data storage: Deno KV or flat files?
 - Dual bootstrap: keep bash script for `curl | bash` alongside AppImage?
@@ -63,6 +71,6 @@ main.ts
 1. Set up project skeleton (`deno.jsonc`, `main.ts`, HTML shell, build task)
 2. Precondition checks (filesystem status API)
 3. eXoDOS game browser (search + download UI)
-4. Steam shortcut creation (vdf via Deno spawn)
+4. Steam shortcut creation (vdf via `npm:steam-binary-vdf`)
 5. Auto-update, AppImage build, GitHub Actions CI + release
-6. Remove/archive bash script (or keep as alternative)
+6. Remove bash script
