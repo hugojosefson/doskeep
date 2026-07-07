@@ -8,6 +8,30 @@ clean() {
     rm -rf /tmp/test-home
 }
 
+# Create a valid VDF with a dummy DOSBox Pure shortcut (for SRM detection)
+create_vdf_with_dosbox() {
+    local file="$1"
+    python3 -c "
+import sys, vdf
+file = sys.argv[1]
+shortcuts = {
+    'shortcuts': {
+        '0': {
+            'appname': 'DOSBox Pure Dummy',
+            'exe': '/dummy/dosbox_pure/retroarch',
+        }
+    }
+}
+with open(file, 'wb') as f:
+    vdf.binary_dump(shortcuts, f)
+" "$file"
+}
+
+vdf_has_shortcut() {
+    local file="$1" name="$2"
+    grep -q "$name" "$file" 2>/dev/null
+}
+
 test_no_emu() {
     echo "=== Test: no Emulation dir ==="
     clean
@@ -107,20 +131,77 @@ test_all_done() {
     echo "=== Test: everything set up ==="
     clean
     export HOME=/tmp/test-home
+    local userdata="$HOME/.local/share/Steam/userdata/12345/config"
     mkdir -p "$HOME/Emulation/roms/dos" \
         "$HOME/Emulation/tools" \
         "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores" \
-        "$HOME/.local/share/Steam/userdata/12345/config"
+        "$userdata"
     touch "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so"
     touch "$HOME/Emulation/roms/dos/wolf3d.zip"
     touch "$HOME/Emulation/tools/Steam-ROM-Manager.AppImage"
-    echo "binary with dosbox_pure in it" \
-        > "$HOME/.local/share/Steam/userdata/12345/config/shortcuts.vdf"
+    create_vdf_with_dosbox "$userdata/shortcuts.vdf"
     output=$(bash "$SCRIPT_DIR/doskeep" 2>&1 || true)
     if echo "$output" | grep -q "doskeep setup complete"; then
         echo "PASS: completed all checks, reached end"
     else
         echo "FAIL: expected 'doskeep setup complete' at end"
+        echo "$output"
+        FAIL=1
+    fi
+    echo ""
+}
+
+test_shortcut_create() {
+    echo "=== Test: Steam shortcut creation ==="
+    clean
+    export HOME=/tmp/test-home
+    local userdata="$HOME/.local/share/Steam/userdata/12345/config"
+    mkdir -p "$HOME/Emulation/roms/dos" \
+        "$HOME/Emulation/tools" \
+        "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores" \
+        "$userdata"
+    touch "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so"
+    touch "$HOME/Emulation/roms/dos/wolf3d.zip"
+    touch "$HOME/Emulation/tools/Steam-ROM-Manager.AppImage"
+    create_vdf_with_dosbox "$userdata/shortcuts.vdf"
+    output=$(bash "$SCRIPT_DIR/doskeep" 2>&1 || true)
+    if echo "$output" | grep -q "Added Steam shortcut"; then
+        echo "PASS: shortcut added"
+    else
+        echo "FAIL: expected 'Added Steam shortcut'"
+        echo "$output"
+        FAIL=1
+    fi
+    if vdf_has_shortcut "$userdata/shortcuts.vdf" "eXoDOS Browser"; then
+        echo "PASS: eXoDOS Browser found in VDF"
+    else
+        echo "FAIL: eXoDOS Browser not in VDF"
+        FAIL=1
+    fi
+    echo ""
+}
+
+test_shortcut_idempotent() {
+    echo "=== Test: Steam shortcut idempotent ==="
+    clean
+    export HOME=/tmp/test-home
+    local userdata="$HOME/.local/share/Steam/userdata/12345/config"
+    mkdir -p "$HOME/Emulation/roms/dos" \
+        "$HOME/Emulation/tools" \
+        "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores" \
+        "$userdata"
+    touch "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so"
+    touch "$HOME/Emulation/roms/dos/wolf3d.zip"
+    touch "$HOME/Emulation/tools/Steam-ROM-Manager.AppImage"
+    # First run: create the shortcut
+    create_vdf_with_dosbox "$userdata/shortcuts.vdf"
+    bash "$SCRIPT_DIR/doskeep" 2>&1 || true
+    # Second run: should detect existing shortcut
+    output=$(bash "$SCRIPT_DIR/doskeep" 2>&1 || true)
+    if echo "$output" | grep -q "already exists"; then
+        echo "PASS: shortcut already exists detected"
+    else
+        echo "FAIL: expected 'already exists' on second run"
         echo "$output"
         FAIL=1
     fi
@@ -133,6 +214,8 @@ test_core_no_games
 test_games_no_srm
 test_srm_needed
 test_all_done
+test_shortcut_create
+test_shortcut_idempotent
 
 echo "============"
 if [[ $FAIL == 0 ]]; then
