@@ -1,6 +1,7 @@
-# Steam Deck DOS guide
+# Steam Deck stuff
 
-Step-by-step instructions for playing 7,600+ DOS games on Steam Deck from Gaming
-Mode using eXoDOS + EmuDeck.
+Custom guides and configs for the Steam Deck.
 
-→ **[Full guide](exodos-emudeck.md)**
+## Contents
+
+- [eXoDOS + EmuDeck: play 7,600+ DOS games from Gaming Mode](exodos-emudeck.md)
