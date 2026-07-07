@@ -11,4 +11,15 @@ Custom guides and configs for the Steam Deck.
 - [setup-dos.sh](setup-dos.sh) — automated setup script (companion to the guide
   above)
 - [Dockerfile.test](Dockerfile.test) + [test-setup.sh](test-setup.sh) —
-  containerized test harness for `setup-dos.sh` (runs in a SteamOS container)
+  containerized test harness for `setup-dos.sh`
+- [run-tests.sh](run-tests.sh) — one-command test runner
+
+## Testing
+
+```bash
+./run-tests.sh
+```
+
+Builds a SteamOS Docker container, runs `setup-dos.sh` through all phases with
+mocked preconditions, and verifies each phase produces the expected output and
+state transitions.
