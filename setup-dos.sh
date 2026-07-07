@@ -32,6 +32,25 @@ phase_1() {
         exit 0
     fi
     mkdir -p "$ROM_DIR"
+
+    # Check if DOSBox Pure core is installed (common locations)
+    DOSBOX_CORE=""
+    for p in \
+        "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so" \
+        "$HOME/Emulation/roms/ports/RetroArch/cores/dosbox_pure_libretro.so" \
+        "$HOME/.config/retroarch/cores/dosbox_pure_libretro.so"; do
+        [ -f "$p" ] && DOSBOX_CORE="$p" && break
+    done
+
+    if [ -z "$DOSBOX_CORE" ]; then
+        echo "─── Manual step ───"
+        echo "Open RetroArch → Online Updater → Core Download"
+        echo "Scroll down → install 'DOSBox Pure'"
+        echo ""
+        echo "Then re-run this script."
+        save_phase 1
+        exit 0
+    fi
     return 0
 }
 
@@ -63,6 +82,13 @@ phase_3() {
     fi
     echo ">>> Launching Steam ROM Manager..."
     "$SRM" &
+    sleep 2
+    if ! pgrep -f "$SRM" >/dev/null 2>&1; then
+        echo "─── Error ───"
+        echo "Steam ROM Manager failed to start. Try launching it manually from:"
+        echo "  $SRM"
+        exit 1
+    fi
     save_phase 4
     echo ""
     echo "─── Manual step ───"
@@ -80,12 +106,14 @@ phase_4() {
     echo ">>> Setup complete!"
     rm -f "$STATE_FILE"
     echo ">>> Returning to Gaming Mode..."
-    if command -v qdbus &>/dev/null; then
-        qdbus org.kde.Shutdown /Shutdown org.kde.Shutdown.logout 2>/dev/null
-    fi
-    if command -v loginctl &>/dev/null; then
-        loginctl terminate-user "$USER" 2>/dev/null
-    fi
+    for cmd in \
+        "steamos-session-select gamescope" \
+        "loginctl terminate-user $USER"; do
+        if command -v "${cmd%% *}" &>/dev/null; then
+            $cmd
+            exit 0
+        fi
+    done
     echo "Failed to switch. Reboot or select Gaming Mode manually."
     exit 1
 }
