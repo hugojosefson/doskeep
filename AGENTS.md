@@ -36,8 +36,8 @@
 
 - When run from Game Mode (`[[ -t 0 ]]` is false), do not prompt interactively.
 - Use `zenity --info` (available on Steam Deck) for output visible in Game Mode.
-- When not a tty, skip browser launch and gaming-mode-switch since already
-  there.
+- When not a tty, skip the interactive game download browser and
+  gaming-mode-switch since already there.
 - The Steam shortcut should work with zero arguments; the script auto-detects
   tty vs Game Mode and adapts behavior.
 
