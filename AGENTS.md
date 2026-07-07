@@ -22,14 +22,24 @@
 - All logic (Steam shortcut Python, game browser UI) must be inlined, not
   separate files.
 
-## Idempotency
+## State-less precondition checking
 
-- Every phase must be safe to re-run. State tracked in
-  `~/.config/doskeep-setup/phase`.
-- Never assume prior state; check files, dirs, and installed tools before
-  acting.
+- No state files. Every function checks the actual system state before acting.
+- Functions inspect files, directories, and installed tools to decide if a step
+  is already done.
+- Each function returns 0 if its precondition is met, otherwise acts or
+  instructs the user.
 - Manual steps pause with a message and `exit 0` so the user re-runs after
   completing them.
+
+## Game Mode awareness
+
+- When run from Game Mode (`[[ -t 0 ]]` is false), do not prompt interactively.
+- Use `zenity --info` (available on Steam Deck) for output visible in Game Mode.
+- When not a tty, skip browser launch and gaming-mode-switch since already
+  there.
+- The Steam shortcut should work with zero arguments; the script auto-detects
+  tty vs Game Mode and adapts behavior.
 
 ## Testing
 

@@ -4,6 +4,7 @@ set -euo pipefail
 # ─── Self-management ───
 REMOTE_URL="https://raw.githubusercontent.com/hugojosefson/doskeep/main/doskeep"
 INSTALL_PATH="$HOME/Emulation/tools/doskeep"
+ROM_DIR="$HOME/Emulation/roms/dos"
 
 is_piped() { [[ ! -f $0 ]]; }
 
@@ -33,26 +34,16 @@ if [[ -t 0 ]]; then
     fi
 fi
 
-# ─── State helpers ───
-STATE_DIR="$HOME/.config/doskeep-setup"
-STATE_FILE="$STATE_DIR/phase"
-ROM_DIR="$HOME/Emulation/roms/dos"
+# ─── Game Mode helpers ───
 
-save_phase() { echo "$1" > "$STATE_FILE"; }
-
-is_setup_complete() {
-    [[ -f $STATE_FILE ]] && return 1
-    [[ -d $HOME/Emulation ]] || return 1
-    local core=""
-    for p in \
-        "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so" \
-        "$HOME/Emulation/roms/ports/RetroArch/cores/dosbox_pure_libretro.so" \
-        "$HOME/.config/retroarch/cores/dosbox_pure_libretro.so"; do
-        [[ -f $p ]] && core="$p" && break
-    done
-    [[ -n $core ]] || return 1
-    [[ -n $(ls -A "$ROM_DIR/" 2>/dev/null || true) ]] || return 1
-    return 0
+notify() {
+    if [[ -t 0 ]] || ! command -v zenity &>/dev/null; then
+        echo "$*"
+    else
+        notify-send "doskeep" "$*" 2>/dev/null || \
+            zenity --info --text="$*" 2>/dev/null || \
+            echo "$*"
+    fi
 }
 
 # ─── Steam shortcut (inline Python via vdf) ───
@@ -208,24 +199,12 @@ exodos_browser() {
     rm -f "$tmpfile"
 }
 
-# ─── Phases ───
+# ─── Precondition checks ───
 
-setup_steam_shortcut() {
-    if [[ $0 != "$INSTALL_PATH" ]]; then
-        mkdir -p "$(dirname "$INSTALL_PATH")"
-        cp "$0" "$INSTALL_PATH"
-        chmod +x "$INSTALL_PATH"
-    fi
-
-    echo ">>> Adding Steam shortcut..."
-    add_steam_shortcut "eXoDOS Browser" "$INSTALL_PATH" "--browse"
-}
-
-phase_0() {
+ensure_emulation_dir() {
     [[ -d $HOME/Emulation ]] && return 0
     echo ">>> Installing EmuDeck..."
-    curl -L https://raw.githubusercontent.com/dragoonDorise/EmuDeck/main/install.sh | bash
-    save_phase 1
+    curl -L https://raw.githubusercontent.com/dragoonDorise/EmuDeck/main/install.sh | bash || true
     echo ""
     echo "─── Manual step ───"
     echo "The EmuDeck app should be open now."
@@ -235,15 +214,7 @@ phase_0() {
     exit 0
 }
 
-phase_1() {
-    if [[ ! -d $HOME/Emulation ]]; then
-        echo "─── Manual step ───"
-        echo "Complete the EmuDeck GUI setup first, then re-run."
-        save_phase 1
-        exit 0
-    fi
-    mkdir -p "$ROM_DIR"
-
+ensure_dosbox_pure_core() {
     local core=""
     for p in \
         "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so" \
@@ -251,23 +222,19 @@ phase_1() {
         "$HOME/.config/retroarch/cores/dosbox_pure_libretro.so"; do
         [[ -f $p ]] && core="$p" && break
     done
+    [[ -n $core ]] && return 0
 
-    if [[ -z $core ]]; then
-        echo "─── Manual step ───"
-        echo "Open RetroArch > Online Updater > Core Download"
-        echo "Scroll down > install 'DOSBox Pure'"
-        echo ""
-        echo "Then re-run doskeep."
-        save_phase 1
-        exit 0
-    fi
-    return 0
+    mkdir -p "$ROM_DIR"
+    echo "─── Manual step ───"
+    echo "Open RetroArch > Online Updater > Core Download"
+    echo "Scroll down > install 'DOSBox Pure'"
+    echo ""
+    echo "Then re-run doskeep."
+    exit 0
 }
 
-phase_2() {
-    if [[ -n $(ls -A "$ROM_DIR/" 2>/dev/null || true) ]]; then
-        return 0
-    fi
+ensure_games_present() {
+    [[ -n $(ls -A "$ROM_DIR/" 2>/dev/null || true) ]] && return 0
 
     echo "No game files found in $ROM_DIR"
     echo ""
@@ -278,10 +245,7 @@ phase_2() {
 
     if [[ $choice == 1 ]]; then
         exodos_browser "$ROM_DIR"
-        if [[ -n $(ls -A "$ROM_DIR/" 2>/dev/null || true) ]]; then
-            echo ">>> Games downloaded successfully!"
-            return 0
-        fi
+        [[ -n $(ls -A "$ROM_DIR/" 2>/dev/null || true) ]] && return 0
     fi
 
     echo "─── Manual step ───"
@@ -292,30 +256,30 @@ phase_2() {
     echo "  https://archive.org/details/exodos-520"
     echo ""
     echo "Then re-run doskeep."
-    save_phase 2
     exit 0
 }
 
-phase_3() {
+ensure_srm_completed() {
     local srm="$HOME/Emulation/tools/Steam-ROM-Manager.AppImage"
     if [[ ! -f $srm ]]; then
-        echo "─── Error ───"
-        echo "Steam ROM Manager not found at:"
-        echo "  $srm"
-        echo "Re-run EmuDeck and make sure Steam ROM Manager is selected."
-        save_phase 1
+        notify "Steam ROM Manager not found. Re-run EmuDeck and make sure Steam ROM Manager is selected."
         exit 1
     fi
+
+    for sf in "$HOME/.local/share/Steam/userdata"/*/config/shortcuts.vdf; do
+        [[ -f $sf ]] || continue
+        if grep -q "dosbox_pure" "$sf" 2>/dev/null; then
+            return 0
+        fi
+    done
+
     echo ">>> Launching Steam ROM Manager..."
     "$srm" &
     sleep 2
     if ! pgrep -f "$srm" >/dev/null 2>&1; then
-        echo "─── Error ───"
-        echo "Steam ROM Manager failed to start. Try launching it manually from:"
-        echo "  $srm"
+        notify "Steam ROM Manager failed to start. Try launching it manually from $srm."
         exit 1
     fi
-    save_phase 4
     echo ""
     echo "─── Manual step ───"
     echo "In Steam ROM Manager:"
@@ -328,24 +292,39 @@ phase_3() {
     exit 0
 }
 
-phase_4() {
-    setup_steam_shortcut
-    rm -f "$STATE_FILE"
+# ─── Steam shortcut ───
+
+setup_steam_shortcut() {
+    if [[ $0 != "$INSTALL_PATH" ]]; then
+        mkdir -p "$(dirname "$INSTALL_PATH")"
+        cp "$0" "$INSTALL_PATH"
+        chmod +x "$INSTALL_PATH"
+    fi
+
+    echo ">>> Adding Steam shortcut..."
+    add_steam_shortcut "eXoDOS Browser" "$INSTALL_PATH"
+}
+
+# ─── Browser + Gaming Mode ───
+
+launch_browser_and_finish() {
     echo ""
     echo ">>> doskeep setup complete!"
     echo "Your DOS games are added to Steam via RetroArch + DOSBox Pure."
-    echo ""
 
     if [[ -t 0 ]]; then
+        echo ""
         echo ">>> Opening game browser..."
         echo "    (Close the browser or type 'done' to finish)"
         echo ""
         exodos_browser "$ROM_DIR"
+
         echo ""
         read -rp "Return to Gaming Mode? [Y/n]: " ans || true
         case "${ans,,}" in n|no) return 0 ;; esac
     fi
 
+    echo ""
     echo ">>> Returning to Gaming Mode..."
     for cmd in \
         "steamos-session-select gamescope" \
@@ -354,59 +333,19 @@ phase_4() {
             $cmd && exit 0
         fi
     done
-    echo "Failed to switch. Reboot or select Gaming Mode manually."
+    notify "Could not switch to Gaming Mode. Reboot or select it manually."
     exit 1
 }
 
 # ─── Main ───
-print_help() {
-    cat <<-'EOF'
-Usage: doskeep [OPTIONS]
-
-Set up eXoDOS on Steam Deck via RetroArch + DOSBox Pure + Steam ROM Manager.
-
-Options:
-  --browse       Browse and download eXoDOS games from archive.org
-  --help, -h     Show this help message
-
-Without options, runs the setup wizard idempotently.
-EOF
-}
 
 main() {
-    case "${1:-}" in
-        --help|-h) print_help; return 0 ;;
-        --browse)
-            mkdir -p "$ROM_DIR"
-            exodos_browser "$ROM_DIR"
-            return 0
-            ;;
-    esac
-
-    mkdir -p "$STATE_DIR"
-
-    if is_setup_complete; then
-        echo ">>> Everything is already set up."
-        setup_steam_shortcut
-        if [[ -t 0 ]]; then
-            echo ">>> Launching game browser..."
-            echo "    (Close the browser or type 'done' to finish)"
-            exodos_browser "$ROM_DIR"
-        fi
-        echo ">>> Done."
-        return 0
-    fi
-
-    local phase
-    phase=$(cat "$STATE_FILE" 2>/dev/null || echo "0")
-
-    case "$phase" in
-        0) phase_0 ;&
-        1) phase_1 ;&
-        2) phase_2 ;&
-        3) phase_3 ;&
-        4) phase_4 ;&
-    esac
+    ensure_emulation_dir
+    ensure_dosbox_pure_core
+    ensure_games_present
+    ensure_srm_completed
+    setup_steam_shortcut
+    launch_browser_and_finish
 }
 
 main "$@"
