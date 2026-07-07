@@ -1,0 +1,407 @@
+#!/bin/bash
+set -euo pipefail
+
+# ─── Self-management ───
+REMOTE_URL="https://raw.githubusercontent.com/hugojosefson/steamdeck/main/dosdeck"
+INSTALL_PATH="$HOME/Emulation/tools/dosdeck"
+
+is_piped() { [ ! -f "$0" ]; }
+
+if is_piped; then
+    mkdir -p "$(dirname "$INSTALL_PATH")"
+    echo ">>> Installing dosdeck to $INSTALL_PATH..."
+    curl -sL -o "$INSTALL_PATH" "$REMOTE_URL"
+    chmod +x "$INSTALL_PATH"
+    echo ">>> Installed. Relaunching..."
+    exec "$INSTALL_PATH" "$@"
+fi
+
+if [ -t 0 ]; then
+    NEW_HASH=$(curl -sL "$REMOTE_URL" 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "")
+    if [ -n "$NEW_HASH" ]; then
+        OLD_HASH=$(sha256sum "$0" | cut -d' ' -f1)
+        if [ "$OLD_HASH" != "$NEW_HASH" ]; then
+            echo ">>> Updating dosdeck..."
+            TMP=$(mktemp)
+            curl -sL -o "$TMP" "$REMOTE_URL"
+            chmod +x "$TMP"
+            cp "$TMP" "$0"
+            rm -f "$TMP"
+            echo ">>> Updated. Relaunching..."
+            exec "$0" "$@"
+        fi
+    fi
+fi
+
+# ─── State helpers ───
+STATE_DIR="$HOME/.config/dosdeck-setup"
+STATE_FILE="$STATE_DIR/phase"
+ROM_DIR="$HOME/Emulation/roms/dos"
+
+save_phase() { echo "$1" > "$STATE_FILE"; }
+
+is_setup_complete() {
+    [ -f "$STATE_FILE" ] && return 1
+    [ -d "$HOME/Emulation" ] || return 1
+    local core=""
+    for p in \
+        "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so" \
+        "$HOME/Emulation/roms/ports/RetroArch/cores/dosbox_pure_libretro.so" \
+        "$HOME/.config/retroarch/cores/dosbox_pure_libretro.so"; do
+        [ -f "$p" ] && core="$p" && break
+    done
+    [ -n "$core" ] || return 1
+    [ -n "$(ls -A "$ROM_DIR/" 2>/dev/null || true)" ] || return 1
+    return 0
+}
+
+# ─── Steam shortcut (inline Python via vdf) ───
+add_steam_shortcut() {
+    local name="$1" exe="$2"
+    local py; py=$(mktemp)
+    cat > "$py" <<-'PYEOF'
+import os, sys
+from pathlib import Path
+name = sys.argv[1]
+exe = os.path.abspath(sys.argv[2])
+start_dir = os.path.dirname(exe)
+userdata = Path.home() / ".local/share/Steam/userdata"
+if not userdata.is_dir():
+    print("Steam userdata not found")
+    sys.exit(0)
+try:
+    import vdf
+except ImportError:
+    rc = os.system("pip3 install --user vdf 2>/dev/null")
+    if rc != 0:
+        os.system("pip3 install vdf 2>/dev/null")
+    try:
+        import vdf
+    except ImportError:
+        print("Could not install vdf, skipping shortcut")
+        sys.exit(0)
+found = False
+for uid_dir in sorted(userdata.iterdir()):
+    sf = uid_dir / "config/shortcuts.vdf"
+    if not sf.is_file():
+        continue
+    with open(sf, "rb") as f:
+        data = vdf.binary_load(f)
+    shortcuts = data.get("shortcuts", {})
+    if any(isinstance(e, dict) and e.get("appname") == name for e in shortcuts.values()):
+        print(f"Shortcut '{name}' already exists for user {uid_dir.name}")
+        found = True
+        continue
+    idx = 0
+    while str(idx) in shortcuts:
+        idx += 1
+    shortcuts[str(idx)] = {
+        "appname": name, "exe": f'"{exe}"', "StartDir": start_dir,
+        "icon": "", "ShortcutPath": "", "IsHidden": 0,
+        "AllowDesktopConfig": 1, "AllowOverlay": 1, "OpenVR": 0,
+        "Devkit": 0, "DevkitGameID": "", "LastPlaytime": 0,
+        "FlatpakAppId": "", "tags": {},
+    }
+    with open(sf, "wb") as f:
+        vdf.binary_dump(f, {"shortcuts": shortcuts})
+    print(f"Added Steam shortcut '{name}' for user {uid_dir.name}")
+    found = True
+if not found:
+    print("No Steam config found. Add manually:\n  Steam > Add a Non-Steam Game > Browse")
+PYEOF
+    python3 "$py" "$name" "$exe" || true
+    rm -f "$py"
+}
+
+# ─── Browser UI ───
+urldecode() {
+    local s="$1"
+    s="${s%.zip}"
+    s="${s//%20/ }"
+    s="${s//%28/(}"
+    s="${s//%29/)}"
+    s="${s//%2C/,}"
+    s="${s//%24/$}"
+    s="${s//%2B/+}"
+    s="${s//%21/!}"
+    s="${s//%5B/[}"
+    s="${s//%5D/]}"
+    printf '%s' "$s"
+}
+
+exodos_browser() {
+    local rom_dir="${1:-$ROM_DIR}"
+    local base_url="https://archive.org/download/exov5_2/eXo/eXoDOS/"
+    local tmpfile; tmpfile=$(mktemp)
+    mkdir -p "$rom_dir"
+
+    echo ">>> Fetching game list from archive.org..."
+    curl -sL "$base_url" | grep -oP 'href="\K[^"]+\.zip(?=")' > "$tmpfile" || {
+        echo "Failed to fetch game list. Check your internet connection."
+        rm -f "$tmpfile"
+        return 1
+    }
+
+    mapfile -t all_games < "$tmpfile"
+    local total="${#all_games[@]}"
+    echo "Found $total games available in eXoDOS v5.2."
+    echo "Downloading to: $rom_dir"
+
+    while true; do
+        echo ""
+        echo "─── eXoDOS Game Browser ───"
+        read -rp "Search (or 'list' for all, 'done' to finish): " query || true
+
+        local matches=()
+        case "${query,,}" in
+            done|"") break ;;
+            list)
+                for i in "${!all_games[@]}"; do matches+=("$i"); done
+                ;;
+            *)
+                for i in "${!all_games[@]}"; do
+                    local display; display=$(urldecode "${all_games[$i]}")
+                    if echo "$display" | grep -qi "${query// /.*}"; then
+                        matches+=("$i")
+                    fi
+                done
+                if [ "${#matches[@]}" -eq 0 ]; then
+                    echo "No matches for '$query'"
+                    continue
+                fi
+                ;;
+        esac
+
+        for j in "${!matches[@]}"; do
+            local idx="${matches[$j]}"
+            local display; display=$(urldecode "${all_games[$idx]}")
+            printf "%4d) %s\n" "$((j + 1))" "$display"
+        done
+
+        echo ""
+        read -rp "Pick numbers to download (e.g. 1 3 5-8, or 'back'): " picks || true
+
+        [ "$picks" = "back" ] && continue
+        [ -z "$picks" ] && continue
+
+        local expanded=""
+        for part in $picks; do
+            if echo "$part" | grep -q '^[0-9]\+-[0-9]\+$'; then
+                expanded="$expanded $(seq "${part%-*}" "${part#*-}")"
+            elif echo "$part" | grep -q '^[0-9]\+$'; then
+                expanded="$expanded $part"
+            fi
+        done
+
+        for num in $expanded; do
+            [ "$num" -lt 1 ] || [ "$num" -gt "${#matches[@]}" ] && continue
+            local idx="${matches[$((num - 1))]}"
+            local game="${all_games[$idx]}"
+            local display; display=$(urldecode "$game")
+            printf ">>> Downloading %s..." "$display"
+            curl -sL -o "$rom_dir/$game" "$base_url$game" && echo " done" || echo " FAILED"
+        done
+    done
+
+    rm -f "$tmpfile"
+}
+
+# ─── Phases ───
+
+setup_steam_shortcut() {
+    local browser_src="" browser_dst=""
+
+    for d in "$(dirname "$0")" .; do
+        if [ -f "$d/exodos-browser.sh" ]; then
+            browser_src="$(cd "$d" && pwd)/exodos-browser.sh"
+            break
+        fi
+    done
+
+    if [ -z "$browser_src" ]; then
+        browser_src="/tmp/exodos-browser.sh"
+        echo ">>> Downloading exodos-browser.sh..."
+        curl -sL -o "$browser_src" \
+            "https://raw.githubusercontent.com/hugojosefson/steamdeck/main/exodos-browser.sh" || true
+        if [ ! -f "$browser_src" ]; then
+            echo ">>> Download failed. Browser won't be added to Steam automatically."
+            return
+        fi
+    fi
+
+    browser_dst="$HOME/Emulation/tools/exodos-browser.sh"
+    mkdir -p "$(dirname "$browser_dst")"
+    cp "$browser_src" "$browser_dst"
+    chmod +x "$browser_dst"
+    echo ">>> Installed browser to $browser_dst"
+
+    echo ">>> Adding Steam shortcut..."
+    add_steam_shortcut "eXoDOS Browser" "$browser_dst"
+}
+
+phase_0() {
+    [ -d "$HOME/Emulation" ] && return 0
+    echo ">>> Installing EmuDeck..."
+    curl -L https://raw.githubusercontent.com/dragoonDorise/EmuDeck/main/install.sh | bash
+    save_phase 1
+    echo ""
+    echo "─── Manual step ───"
+    echo "The EmuDeck app should be open now."
+    echo "In EmuDeck: Custom Mode -> only check RetroArch -> Steam ROM Manager -> Install"
+    echo ""
+    echo "After that, re-run dosdeck."
+    exit 0
+}
+
+phase_1() {
+    if [ ! -d "$HOME/Emulation" ]; then
+        echo "─── Manual step ───"
+        echo "Complete the EmuDeck GUI setup first, then re-run."
+        save_phase 1
+        exit 0
+    fi
+    mkdir -p "$ROM_DIR"
+
+    local core=""
+    for p in \
+        "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so" \
+        "$HOME/Emulation/roms/ports/RetroArch/cores/dosbox_pure_libretro.so" \
+        "$HOME/.config/retroarch/cores/dosbox_pure_libretro.so"; do
+        [ -f "$p" ] && core="$p" && break
+    done
+
+    if [ -z "$core" ]; then
+        echo "─── Manual step ───"
+        echo "Open RetroArch > Online Updater > Core Download"
+        echo "Scroll down > install 'DOSBox Pure'"
+        echo ""
+        echo "Then re-run dosdeck."
+        save_phase 1
+        exit 0
+    fi
+    return 0
+}
+
+phase_2() {
+    if [ -n "$(ls -A "$ROM_DIR/" 2>/dev/null || true)" ]; then
+        return 0
+    fi
+
+    echo "No game files found in $ROM_DIR"
+    echo ""
+    echo "Options:"
+    echo "  1) Browse and download games from eXoDOS"
+    echo "  2) I'll place games manually later"
+    read -rp "Choose [1/2]: " choice || true
+
+    if [ "$choice" = "1" ]; then
+        exodos_browser "$ROM_DIR"
+        if [ -n "$(ls -A "$ROM_DIR/" 2>/dev/null || true)" ]; then
+            echo ">>> Games downloaded successfully!"
+            return 0
+        fi
+    fi
+
+    echo "─── Manual step ───"
+    echo "Place DOS game .zip files into:"
+    echo "  $ROM_DIR"
+    echo ""
+    echo "Get games from eXoDOS on archive.org:"
+    echo "  https://archive.org/details/exodos-520"
+    echo ""
+    echo "Then re-run dosdeck."
+    save_phase 2
+    exit 0
+}
+
+phase_3() {
+    local srm="$HOME/Emulation/tools/Steam-ROM-Manager.AppImage"
+    if [ ! -f "$srm" ]; then
+        echo "─── Error ───"
+        echo "Steam ROM Manager not found at:"
+        echo "  $srm"
+        echo "Re-run EmuDeck and make sure Steam ROM Manager is selected."
+        save_phase 1
+        exit 1
+    fi
+    echo ">>> Launching Steam ROM Manager..."
+    "$srm" &
+    sleep 2
+    if ! pgrep -f "$srm" >/dev/null 2>&1; then
+        echo "─── Error ───"
+        echo "Steam ROM Manager failed to start. Try launching it manually from:"
+        echo "  $srm"
+        exit 1
+    fi
+    save_phase 4
+    echo ""
+    echo "─── Manual step ───"
+    echo "In Steam ROM Manager:"
+    echo "  1. Check 'DOSBox Pure (RetroArch)' parser"
+    echo "  2. Click Preview"
+    echo "  3. Click Save to Steam"
+    echo "  4. Close Steam ROM Manager"
+    echo ""
+    echo "Then re-run dosdeck to finish."
+    exit 0
+}
+
+phase_4() {
+    setup_steam_shortcut
+    rm -f "$STATE_FILE"
+    echo ""
+    echo ">>> Dosdeck setup complete!"
+    echo "Your DOS games are added to Steam via RetroArch + DOSBox Pure."
+    echo ""
+
+    if [ -t 0 ]; then
+        echo ">>> Opening game browser..."
+        echo "    (Close the browser or type 'done' to finish)"
+        echo ""
+        exodos_browser "$ROM_DIR"
+        echo ""
+        read -rp "Return to Gaming Mode? [Y/n]: " ans || true
+        case "${ans,,}" in n|no) return 0 ;; esac
+    fi
+
+    echo ">>> Returning to Gaming Mode..."
+    for cmd in \
+        "steamos-session-select gamescope" \
+        "loginctl terminate-user ${USER:-deck}"; do
+        if command -v "${cmd%% *}" &>/dev/null; then
+            $cmd && exit 0
+        fi
+    done
+    echo "Failed to switch. Reboot or select Gaming Mode manually."
+    exit 1
+}
+
+# ─── Main ───
+main() {
+    mkdir -p "$STATE_DIR"
+
+    if is_setup_complete; then
+        echo ">>> Everything is already set up."
+        setup_steam_shortcut
+        if [ -t 0 ]; then
+            echo ">>> Launching game browser..."
+            echo "    (Close the browser or type 'done' to finish)"
+            exodos_browser "$ROM_DIR"
+        fi
+        echo ">>> Done."
+        return 0
+    fi
+
+    local phase
+    phase=$(cat "$STATE_FILE" 2>/dev/null || echo "0")
+
+    case "$phase" in
+        0) phase_0 ;&
+        1) phase_1 ;&
+        2) phase_2 ;&
+        3) phase_3 ;&
+        4) phase_4 ;&
+    esac
+}
+
+main "$@"

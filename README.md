@@ -10,7 +10,7 @@ Custom guides and configs for the Steam Deck.
 Copy/paste this into the Desktop Mode terminal:
 
 ```bash
-curl -L https://raw.githubusercontent.com/hugojosefson/steamdeck/main/setup-dos.sh | bash
+curl -L https://raw.githubusercontent.com/hugojosefson/steamdeck/main/dosdeck | bash
 ```
 
 The script walks you through installing EmuDeck + RetroArch + DOS Box Pure +
@@ -21,8 +21,7 @@ after each manual step to continue where you left off.
 
 - [eXoDOS + EmuDeck: play 7,600+ DOS games from Gaming Mode](exodos-emudeck.md)
   — detailed step-by-step guide
-- [setup-dos.sh](setup-dos.sh) — automated setup script (companion to the guide
-  above)
+- [dosdeck](dosdeck) — automated setup script (companion to the guide above)
 - [exodos-browser.sh](exodos-browser.sh) — browse and download games from
   archive.org (works in Desktop Mode or Gaming Mode via Steam non-Steam game)
 

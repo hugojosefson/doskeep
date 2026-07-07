@@ -14,7 +14,7 @@ test_phase0_no_emu() {
     clean
     export HOME=/tmp/test-home
     mkdir -p "$HOME/.config"
-    bash "$SCRIPT_DIR/setup-dos.sh" 2>&1 || true
+    bash "$SCRIPT_DIR/dosdeck" 2>&1 || true
     if [ -f "$HOME/.config/dosdeck-setup/phase" ]; then
         echo "FAIL: state file created despite no curl"
         FAIL=1
@@ -29,7 +29,7 @@ test_phase0_emu_exists() {
     clean
     export HOME=/tmp/test-home
     mkdir -p "$HOME/.config/dosdeck-setup" "$HOME/Emulation"
-    output=$(bash "$SCRIPT_DIR/setup-dos.sh" 2>&1 || true)
+    output=$(bash "$SCRIPT_DIR/dosdeck" 2>&1 || true)
     if echo "$output" | grep -q "DOSBox Pure"; then
         echo "PASS: detected missing DOSBox Pure core"
     else
@@ -54,7 +54,7 @@ test_phase1_core_present() {
         "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores"
     touch "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so"
     echo "1" > "$HOME/.config/dosdeck-setup/phase"
-    output=$(bash "$SCRIPT_DIR/setup-dos.sh" 2>&1 || true)
+    output=$(bash "$SCRIPT_DIR/dosdeck" 2>&1 || true)
     if echo "$output" | grep -q "Place DOS game"; then
         echo "PASS: detected empty ROM dir"
     else
@@ -80,7 +80,7 @@ test_phase2_games_present() {
     touch "$HOME/.var/app/org.libretro.RetroArch/config/retroarch/cores/dosbox_pure_libretro.so"
     touch "$HOME/Emulation/roms/dos/wolf3d.zip"
     echo "2" > "$HOME/.config/dosdeck-setup/phase"
-    output=$(bash "$SCRIPT_DIR/setup-dos.sh" 2>&1 || true)
+    output=$(bash "$SCRIPT_DIR/dosdeck" 2>&1 || true)
     if echo "$output" | grep -q "Steam ROM Manager not found"; then
         echo "PASS: detected missing SRM"
     else
@@ -106,7 +106,7 @@ sleep 10
 SRMOCK
     chmod +x "$HOME/Emulation/tools/Steam-ROM-Manager.AppImage"
     echo "3" > "$HOME/.config/dosdeck-setup/phase"
-    output=$(bash "$SCRIPT_DIR/setup-dos.sh" 2>&1 || true)
+    output=$(bash "$SCRIPT_DIR/dosdeck" 2>&1 || true)
     if echo "$output" | grep -q "Launching Steam ROM Manager"; then
         echo "PASS: SRM launched"
     else
@@ -130,7 +130,7 @@ test_phase4_cleanup() {
     export HOME=/tmp/test-home
     mkdir -p "$HOME/.config/dosdeck-setup" "$HOME/Emulation/roms/dos"
     echo "4" > "$HOME/.config/dosdeck-setup/phase"
-    output=$(bash "$SCRIPT_DIR/setup-dos.sh" 2>&1 || true)
+    output=$(bash "$SCRIPT_DIR/dosdeck" 2>&1 || true)
     if echo "$output" | grep -q "Failed to switch"; then
         echo "PASS: detected no Gaming Mode switch available"
     else
