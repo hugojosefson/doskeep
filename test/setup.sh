@@ -117,10 +117,10 @@ test_all_done() {
     echo "binary with dosbox_pure in it" \
         > "$HOME/.local/share/Steam/userdata/12345/config/shortcuts.vdf"
     output=$(bash "$SCRIPT_DIR/doskeep" 2>&1 || true)
-    if echo "$output" | grep -q "Could not switch"; then
+    if echo "$output" | grep -q "doskeep setup complete"; then
         echo "PASS: completed all checks, reached end"
     else
-        echo "FAIL: expected 'Could not switch' at end"
+        echo "FAIL: expected 'doskeep setup complete' at end"
         echo "$output"
         FAIL=1
     fi

@@ -46,6 +46,15 @@ notify() {
     fi
 }
 
+prompt() {
+    local msg="$1"
+    if [[ -t 0 ]]; then
+        read -rp "$msg" PROMPT_REPLY || true
+    else
+        PROMPT_REPLY=$(zenity --entry --text="$msg" 2>/dev/null || echo "")
+    fi
+}
+
 # ─── Steam shortcut (inline Python via vdf) ───
 add_steam_shortcut() {
     local name="$1" exe="$2" opts="${3:-}"
@@ -143,7 +152,8 @@ exodos_browser() {
     while true; do
         echo ""
         echo "─── eXoDOS Game Browser ───"
-        read -rp "Search (or 'list' for all, 'done' to finish): " query || true
+        prompt "Search (or list for all, done to finish): "
+        local query="${PROMPT_REPLY:-}"
 
         local matches=()
         case "${query,,}" in
@@ -172,7 +182,8 @@ exodos_browser() {
         done
 
         echo ""
-        read -rp "Pick numbers to download (e.g. 1 3 5-8, or 'back'): " picks || true
+        prompt "Pick numbers to download (e.g. 1 3 5-8, or back): "
+        local picks="${PROMPT_REPLY:-}"
 
         [[ $picks == back ]] && continue
         [[ -z $picks ]] && continue
@@ -236,12 +247,14 @@ ensure_dosbox_pure_core() {
 ensure_games_present() {
     [[ -n $(ls -A "$ROM_DIR/" 2>/dev/null || true) ]] && return 0
 
+    notify "No game files found in $ROM_DIR. Options: 1) Browse/download 2) Place manually later"
     echo "No game files found in $ROM_DIR"
     echo ""
     echo "Options:"
     echo "  1) Browse and download games from eXoDOS"
     echo "  2) I'll place games manually later"
-    read -rp "Choose [1/2]: " choice || true
+    prompt "Choose [1/2]: "
+    local choice="${PROMPT_REPLY:-}"
 
     if [[ $choice == 1 ]]; then
         exodos_browser "$ROM_DIR"
@@ -312,29 +325,29 @@ launch_browser_and_finish() {
     echo ">>> doskeep setup complete!"
     echo "Your DOS games are added to Steam via RetroArch + DOSBox Pure."
 
-    if [[ -t 0 ]]; then
-        echo ""
-        echo ">>> Opening game browser..."
-        echo "    (Close the browser or type 'done' to finish)"
-        echo ""
-        exodos_browser "$ROM_DIR"
+    echo ""
+    echo ">>> Opening game browser..."
+    echo "    (Close the browser or type 'done' to finish)"
+    echo ""
+    exodos_browser "$ROM_DIR" || true
 
+    if [[ -t 0 ]]; then
         echo ""
         read -rp "Return to Gaming Mode? [Y/n]: " ans || true
         case "${ans,,}" in n|no) return 0 ;; esac
-    fi
 
-    echo ""
-    echo ">>> Returning to Gaming Mode..."
-    for cmd in \
-        "steamos-session-select gamescope" \
-        "loginctl terminate-user ${USER:-deck}"; do
-        if command -v "${cmd%% *}" &>/dev/null; then
-            $cmd && exit 0
-        fi
-    done
-    notify "Could not switch to Gaming Mode. Reboot or select it manually."
-    exit 1
+        echo ""
+        echo ">>> Returning to Gaming Mode..."
+        for cmd in \
+            "steamos-session-select gamescope" \
+            "loginctl terminate-user ${USER:-deck}"; do
+            if command -v "${cmd%% *}" &>/dev/null; then
+                $cmd && exit 0
+            fi
+        done
+        notify "Could not switch to Gaming Mode. Reboot or select it manually."
+        exit 1
+    fi
 }
 
 # ─── Main ───
