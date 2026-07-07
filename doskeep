@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # ─── Self-management ───
-REMOTE_URL="https://raw.githubusercontent.com/hugojosefson/steamdeck/main/dosdeck"
-INSTALL_PATH="$HOME/Emulation/tools/dosdeck"
+REMOTE_URL="https://raw.githubusercontent.com/hugojosefson/doskeep/main/doskeep"
+INSTALL_PATH="$HOME/Emulation/tools/doskeep"
 
 is_piped() { [ ! -f "$0" ]; }
 
 if is_piped; then
     mkdir -p "$(dirname "$INSTALL_PATH")"
-    echo ">>> Installing dosdeck to $INSTALL_PATH..."
+    echo ">>> Installing doskeep to $INSTALL_PATH..."
     curl -sL -o "$INSTALL_PATH" "$REMOTE_URL"
     chmod +x "$INSTALL_PATH"
     echo ">>> Installed. Relaunching..."
@@ -21,7 +21,7 @@ if [ -t 0 ]; then
     if [ -n "$NEW_HASH" ]; then
         OLD_HASH=$(sha256sum "$0" | cut -d' ' -f1)
         if [ "$OLD_HASH" != "$NEW_HASH" ]; then
-            echo ">>> Updating dosdeck..."
+            echo ">>> Updating doskeep..."
             TMP=$(mktemp)
             curl -sL -o "$TMP" "$REMOTE_URL"
             chmod +x "$TMP"
@@ -34,7 +34,7 @@ if [ -t 0 ]; then
 fi
 
 # ─── State helpers ───
-STATE_DIR="$HOME/.config/dosdeck-setup"
+STATE_DIR="$HOME/.config/doskeep-setup"
 STATE_FILE="$STATE_DIR/phase"
 ROM_DIR="$HOME/Emulation/roms/dos"
 
@@ -222,7 +222,7 @@ setup_steam_shortcut() {
         browser_src="/tmp/exodos-browser.sh"
         echo ">>> Downloading exodos-browser.sh..."
         curl -sL -o "$browser_src" \
-            "https://raw.githubusercontent.com/hugojosefson/steamdeck/main/exodos-browser.sh" || true
+            "https://raw.githubusercontent.com/hugojosefson/doskeep/main/exodos-browser.sh" || true
         if [ ! -f "$browser_src" ]; then
             echo ">>> Download failed. Browser won't be added to Steam automatically."
             return
@@ -249,7 +249,7 @@ phase_0() {
     echo "The EmuDeck app should be open now."
     echo "In EmuDeck: Custom Mode -> only check RetroArch -> Steam ROM Manager -> Install"
     echo ""
-    echo "After that, re-run dosdeck."
+    echo "After that, re-run doskeep."
     exit 0
 }
 
@@ -275,7 +275,7 @@ phase_1() {
         echo "Open RetroArch > Online Updater > Core Download"
         echo "Scroll down > install 'DOSBox Pure'"
         echo ""
-        echo "Then re-run dosdeck."
+        echo "Then re-run doskeep."
         save_phase 1
         exit 0
     fi
@@ -309,7 +309,7 @@ phase_2() {
     echo "Get games from eXoDOS on archive.org:"
     echo "  https://archive.org/details/exodos-520"
     echo ""
-    echo "Then re-run dosdeck."
+    echo "Then re-run doskeep."
     save_phase 2
     exit 0
 }
@@ -342,7 +342,7 @@ phase_3() {
     echo "  3. Click Save to Steam"
     echo "  4. Close Steam ROM Manager"
     echo ""
-    echo "Then re-run dosdeck to finish."
+    echo "Then re-run doskeep to finish."
     exit 0
 }
 
@@ -350,7 +350,7 @@ phase_4() {
     setup_steam_shortcut
     rm -f "$STATE_FILE"
     echo ""
-    echo ">>> Dosdeck setup complete!"
+    echo ">>> doskeep setup complete!"
     echo "Your DOS games are added to Steam via RetroArch + DOSBox Pure."
     echo ""
 

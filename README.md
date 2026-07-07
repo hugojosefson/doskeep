@@ -1,28 +1,32 @@
-# Steam Deck stuff
+# doskeep
 
-> **Warning:** Everything in this repo is untested. It may not work or may cause
-> issues. Use at your own risk.
+> **Warning:** Everything here is untested. It may not work or may cause issues.
+> Use at your own risk.
 
-Custom guides and configs for the Steam Deck.
+Idempotent setup + game browser for playing eXoDOS games on Steam Deck via
+RetroArch + DOSBox Pure.
 
-## Quick start
-
-Copy/paste this into the Desktop Mode terminal:
+Install with one command, then re-run anytime to browse and download more games:
 
 ```bash
-curl -L https://raw.githubusercontent.com/hugojosefson/steamdeck/main/dosdeck | bash
+curl -L https://raw.githubusercontent.com/hugojosefson/doskeep/main/doskeep | bash
 ```
 
-The script walks you through installing EmuDeck + RetroArch + DOS Box Pure +
-Steam ROM Manager, placing game files, and returning to Gaming Mode. Re-run it
-after each manual step to continue where you left off.
+The script:
+1. Installs EmuDeck + RetroArch + DOSBox Pure + Steam ROM Manager
+2. Checks for game files — offers to browse/download from eXoDOS on archive.org
+3. Launches Steam ROM Manager to add games to your Steam library
+4. Adds itself as a non-Steam game so you can browse/download from Gaming Mode
+5. When setup is complete, opens the game browser automatically
 
-## Contents
+Re-run it after each manual step to continue where you left off.
 
-- [eXoDOS + EmuDeck: play 7,600+ DOS games from Gaming Mode](exodos-emudeck.md)
-  — detailed step-by-step guide
-- [dosdeck](dosdeck) — automated setup script (companion to the guide above)
-- [exodos-browser.sh](exodos-browser.sh) — browse and download games from
-  archive.org (works in Desktop Mode or Gaming Mode via Steam non-Steam game)
+## Files
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development and testing info.
+| File | Purpose |
+| :--- | :------ |
+| [doskeep](doskeep) | main CLI tool |
+| [exodos-browser.sh](exodos-browser.sh) | standalone game browser (used by doskeep) |
+| [exodos-emudeck.md](exodos-emudeck.md) | step-by-step manual guide |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development and testing.

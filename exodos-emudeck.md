@@ -3,11 +3,11 @@
 > **Warning:** This guide is untested. It may not work or may cause issues. Use
 > at your own risk.
 
-> **Automated alternative:** Run [dosdeck](dosdeck) from the terminal
+> **Automated alternative:** Run [doskeep](doskeep) from the terminal
 > for a guided setup that automates much of the process:
 >
 > ```bash
-> curl -L https://raw.githubusercontent.com/hugojosefson/steamdeck/main/dosdeck | bash
+> curl -L https://raw.githubusercontent.com/hugojosefson/doskeep/main/doskeep | bash
 > ```
 >
 > To browse and download individual game zips later, use

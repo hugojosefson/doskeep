@@ -3,7 +3,7 @@
 ## Development
 
 - [Makefile](Makefile) — `make all` renders HTML and runs tests
-- [test/](test/) — containerized test harness for `dosdeck`
+- [test/](test/) — containerized test harness for `doskeep`
 
 ## Testing
 
@@ -13,6 +13,6 @@ make test   # tests only
 make html   # render HTML only (via pattern rule %.html: %.md)
 ```
 
-The test suite builds a SteamOS Docker container, runs `dosdeck` through
+The test suite builds a SteamOS Docker container, runs `doskeep` through
 all phases with mocked preconditions, and verifies each phase produces the
 expected output and state transitions.
